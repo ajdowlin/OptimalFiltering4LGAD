@@ -62,7 +62,7 @@ def fixTimeAxis(x, startWin, dtEven, dtOdd, sampleOffset=0):
 
     x_new = np.zeros(n_samples)
     x_new[1:] = np.cumsum(dt_pattern[interval_indices])
-
+    
     return x_new / 100
 
 def loadTimeCalibration(path):
@@ -111,14 +111,18 @@ def process_waveform(raw_waveform,
                      invert = False,
                      flagMax = 0,
                      ievnt = 0,
-                     sampleOff = 0,
-                     v=False
+                     sampleOff_time = 0,
+                     sampleOff_ped = 0,
+                     v=False,
+                     returnIndices = False
                      ):
 
     # 1st Calibrate the ADC 
     # channelADC is either a
     #  - list of average slopes for channels 0-7: converts ADC to mV based on average ADC/mV response
-    #  - 8x32640 array of individual pipeline slopes: converts ADC to mV based on per pipeline measured ADC
+    #    - use getPedestalSlopes(pedPath, plots=True, avgSlope=True)
+    #  - 8x32640 array of individual pipeline slopes: converts ADC to mV based on per pipeline measured ADC [[[PREFERRED]]]
+    #    - use - use getPedestalSlopes(pedPath, plots=True, avgSlope=False)
     
     # 2nd Remove Baseline (Optional)
     # baseline: 2 value array of [lower sample, upper sample]
@@ -144,8 +148,7 @@ def process_waveform(raw_waveform,
     # times: time axis of waveform relative to window that was triggered on
     # flags: array of flag values for corresponding waveform samples
     # badWaveform:
-    #  - False if spliced waveform has number bad samples < flagMax 
-    
+    #  - False if spliced waveform has number bad samples < flagMax
     
     try:
         if channelADC is not None:
@@ -153,7 +156,7 @@ def process_waveform(raw_waveform,
                 nPoints = len(raw_waveform)
                 indices = (
                     startWindow * 64
-                    + sampleOff
+                    + sampleOff_ped
                     + np.arange(nPoints, dtype=int)
                 )
                 
@@ -170,12 +173,12 @@ def process_waveform(raw_waveform,
             if channelADC.ndim == 1:
                 waveform = raw_waveform / channelADC[channel]
                 
-            if channelADC.ndim > 1:
+            elif channelADC.ndim > 1:
                 nPoints = len(raw_waveform)
-                indices  = np.array([startWindow*64 + i + sampleOff for i in range(nPoints)])
+                indices  = np.array([startWindow*64 + i + sampleOff_ped for i in range(nPoints)])
                 waveform = pedestals.ADCmVbyPipelineSlope(raw_waveform, indices, channelADC, channel)
         else:
-            waveform = np.asarray(raw_waveform) / 5.0
+            waveform = np.asarray(raw_waveform) / 4.0
             #print(f"Warning: ADC not calibrated. Samples returned in ADC/4 for channel {channel} event {ievnt}")
         if baseline is not None:
             waveform = removeBaseline(waveform, baseline[0], baseline[1])
@@ -186,7 +189,7 @@ def process_waveform(raw_waveform,
         if waveform_bounds is not None:
             times = np.asarray(range(len(waveform)))
             if tCalib is not None:
-                times = fixTimeAxis(times, startWindow, tCalib[0], tCalib[1], sampleOffset = sampleOff)
+                times = fixTimeAxis(times, startWindow, tCalib[0], tCalib[1], sampleOffset = sampleOff_time)
             waveform, times,  flags = splice_waveform(waveform, times, flags, waveform_bounds[0], waveform_bounds[1], invert)
         badWaveform = False
         

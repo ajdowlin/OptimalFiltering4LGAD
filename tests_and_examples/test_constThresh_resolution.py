@@ -7,9 +7,13 @@ import pedestals
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
 import re
 from scipy.stats import norm
 import traceback
+
+
+#CFD based timing discriminator
 
 def calcTOA_inv(method, pulsex, pulsey, n, peak, perc, v=False):
     """
@@ -70,24 +74,31 @@ def calcTOA_inv(method, pulsex, pulsey, n, peak, perc, v=False):
         return TOA
 
     
-#data_path = "/Volumes/T9/Scan_7_16_26/x1981-y28830-board0-nSkippedEvents1.csv"
-data_path = "/Volumes/T9/LGAD_10kEvents_ch012ref_ch34567sig.csv"
-#ped_path = "/Volumes/T9/fullDynamicPedestals_6_17_26.csv"
+#data_path = "/Volumes/T9/ch01_relativeMeasurement.csv"
+#data_path = "/Volumes/T9/LGAD_10kEvents_ch012ref_ch34567sig.csv"
+data_path = "/Volumes/T9/ch01_cableDelay_5kEvents.csv"
 ped_path = "/Volumes/T9/fullDynamicPedestals_isel_3350_3300.csv"
-ch_sig = 3
-ch_ref = 1
-maxEvents = 10000
+#ped_path = "/Volumes/T9/fullDynamicPedestals_6_17_26.csv"
+ch_sig = 1
+ch_ref = 0
+maxEvents = 5000
 TOA_min = 0
-TOA_max = 50
-toPlot = -1
+TOA_max = 100
+toPlot = 5
 
 slopes = pedestals.getPedestalSlopes(ped_path,plots=True,avgSlope = False)
+slopes_avg = pedestals.getPedestalSlopes(ped_path,plots=True,avgSlope = True)
 
-tCalib_even_sig = "/Volumes/T9/ch0123_timeCalib_2Mevents_8_3_26/Ch3_-1000Thresh_EvenWinCalib.csv"
-tCalib_odd_sig = "/Volumes/T9/ch0123_timeCalib_2Mevents_8_3_26/Ch3_-1000Thresh_OddWinCalib.csv"
+#tCalib_even_sig = "/Volumes/T9/Ch2_98511Events_EvenWinCalib.csv" #"/Volumes/T9/Ch3_98602Events_EvenWinCalib.csv"
+#tCalib_odd_sig =  "/Volumes/T9/Ch2_100059Events_OddWinCalib.csv" #"/Volumes/T9/Ch3_99968Events_OddWinCalib.csv"
 
-tCalib_even_ref = "/Volumes/T9/ch0123_timeCalib_2Mevents_8_3_26/Ch1_-1000Thresh_EvenWinCalib.csv"
-tCalib_odd_ref =  "/Volumes/T9/ch0123_timeCalib_2Mevents_8_3_26/Ch1_-1000Thresh_OddWinCalib.csv"
+tCalib_even_sig = "/Volumes/T9/ch01_timeCalib_2Mevents_8_4_26/Ch1_-1200Thresh_EvenWinCalib.csv"
+tCalib_odd_sig = "/Volumes/T9/ch01_timeCalib_2Mevents_8_4_26/Ch1_-1200Thresh_OddWinCalib.csv"
+
+tCalib_even_ref = "/Volumes/T9/ch01_timeCalib_2Mevents_8_4_26/Ch0_-1200Thresh_EvenWinCalib.csv"
+tCalib_odd_ref =  "/Volumes/T9/ch01_timeCalib_2Mevents_8_4_26/Ch0_-1200Thresh_OddWinCalib.csv"
+
+
 
 df_even_ref = pd.read_csv(tCalib_even_ref)
 tCalib_ref_even = df_even_ref["bin_width_ps"].to_numpy(dtype=float)
@@ -100,6 +111,7 @@ tCalib_sig_even = df_even_sig["bin_width_ps"].to_numpy(dtype=float)
 
 df_odd_sig = pd.read_csv(tCalib_odd_sig)
 tCalib_sig_odd = df_odd_sig["bin_width_ps"].to_numpy(dtype=float)
+
 
 
 
@@ -125,34 +137,32 @@ for event_num in events:
     try:
         raw_waveform_sig = event_df[f"ch{ch_sig}"].to_numpy()
         waveform_sig, times_sig, flags_sig, bad_sig = calib_waveform.process_waveform(raw_waveform_sig,
-                                                                                      slopes,
+                                                                                      slopes_avg,
                                                                                       start_window,
                                                                                       ch_sig,
                                                                                       baseline = [0,50],
-                                                                                      badSample_range = [-1000, 400],
-                                                                                      waveform_bounds = [20, 20],
+                                                                                      badSample_range = [-1000, 2000],
+                                                                                      waveform_bounds = [30, 5],
                                                                                       tCalib = [tCalib_sig_even,tCalib_sig_odd],
                                                                                       invert = False,
                                                                                       flagMax = 0,
                                                                                       ievnt = event_num,
-                                                                                      sampleOff_time = 0,
-                                                                                      sampleOff_ped = 0,
+                                                                                      sampleOff = 0,#2300,
                                                                                       v=False
                                                                                       )
         raw_waveform_ref = event_df[f"ch{ch_ref}"].to_numpy()
         waveform_ref, times_ref, flags_ref, bad_ref = calib_waveform.process_waveform(raw_waveform_ref,
-                                                                                      slopes,
+                                                                                      slopes_avg,
                                                                                       start_window,
                                                                                       ch_ref,
                                                                                       baseline = [0,50],
-                                                                                      badSample_range = [-600, 4000],
+                                                                                      badSample_range = [-1000, 2000],
                                                                                       waveform_bounds = [30, 5],
-                                                                                      tCalib = [tCalib_ref_even,tCalib_ref_odd],
-                                                                                      invert = True,
+                                                                                      tCalib = [tCalib_ref_odd,tCalib_ref_even],
+                                                                                      invert = False,
                                                                                       flagMax = 0,
                                                                                       ievnt = event_num,
-                                                                                      sampleOff_time= -87,
-                                                                                      sampleOff_ped = 0,
+                                                                                      sampleOff= -25,#,2279,
                                                                                       v=False
                                                                                       )
 
@@ -169,9 +179,8 @@ for event_num in events:
             #print(waveform_sig)
             plt.show()
         
-        TOA_sig_CFD = calcTOA_inv('calc', times_sig, -waveform_sig, 0,  0, 0.88, v=False)
-        #TOA_ref = calcTOA_inv('calc',times_ref,waveform_ref,0, 0, 0.65,v=False)
-        TOA_ref = calcTOA_inv("fixed",times_ref,waveform_ref,0,-150,1.0,v=False)
+        TOA_ref2 = calcTOA_inv("fixed", times_sig, -waveform_sig, 0,-300, 1.0, v=False)
+        TOA_ref1 = calcTOA_inv("fixed",times_ref,-waveform_ref,0,-300,1.0,v=False)
         
     except Exception as e:
         bad_sig = True
@@ -182,7 +191,7 @@ for event_num in events:
         print("bad sig or ref evnt: ", event_num)
         continue
 
-    TOA = abs(TOA_sig_CFD - TOA_ref)
+    TOA = TOA_ref2 - TOA_ref1
     if TOA > TOA_min and TOA < TOA_max:
         TOAs.append(TOA)
     else:
@@ -198,10 +207,7 @@ bin_width = bins[1] - bins[0]
 y = norm.pdf(x, mu, sigma) * len(TOAs) * bin_width
 
 plt.plot(x, y, lw=2,label=fr'$\mu={mu:.3f}$, $\sigma={sigma:.3f}$')
-plt.xlabel("Samples [100ps]")
-plt.ylabel("Counts")
 print(np.std(TOAs))
 plt.legend()
 plt.show()
-        
         

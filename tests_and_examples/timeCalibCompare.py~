@@ -1,0 +1,44 @@
+import sys
+from pathlib import Path
+parent_dir = Path(__file__).resolve().parent.parent
+sys.path.append(str(parent_dir))
+import calib_waveform
+import pedestals
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from pathlib import Path
+import re
+from scipy.stats import norm
+import traceback
+
+
+
+tCalib_even1 = "/Volumes/T9/ch0123_timeCalib_2Mevents_7_31_26_capture_2/Ch0_-400Thresh_EvenWinCalib.csv"
+#tCalib_even1 = "/Volumes/T9/Ch0_496663Events_EvenWinCalib.csv"
+tCalib_even2 = "/Volumes/T9/ch0123_timeCalib_2Mevents_7_31_26_capture_2/Ch0_-200Thresh_EvenWinCalib.csv"
+
+df_even_1 = pd.read_csv(tCalib_even1)
+df_even_2 = pd.read_csv(tCalib_even2)
+
+even1 = df_even_1["bin_width_ps"].to_numpy(dtype=float)
+even2 = df_even_2["bin_width_ps"].to_numpy(dtype=float)
+
+even1_err = df_even_1["bin_width_err_ps"].to_numpy(dtype=float)
+even2_err = df_even_2["bin_width_err_ps"].to_numpy(dtype=float)
+plt.errorbar(range(64),even1, yerr = even1_err, marker = 'o', linestyle = "None", label = "Calibration Sample 2, 400 ADC thresh")
+plt.errorbar(range(64),even2, yerr = even2_err, marker = 'o', linestyle = "None", label = "Calibration Sample 2, 200 ADC thresh")
+plt.xlabel("Bin No.")
+plt.ylabel("Measured Bin Width (ps)")
+
+plt.legend()
+plt.show()
+
+dif = even1 - even2
+dif_err = np.sqrt(even1_err**2 + even2_err**2)
+
+plt.errorbar(range(64), dif, yerr = dif_err, marker = 'o', linestyle = "None")
+plt.axhline(y=0)
+plt.xlabel("Bin No.")
+plt.ylabel("Difference (ps)")
+plt.show()

@@ -198,8 +198,6 @@ bin_width = bins[1] - bins[0]
 y = norm.pdf(x, mu, sigma) * len(TOAs) * bin_width
 
 plt.plot(x, y, lw=2,label=fr'$\mu={mu:.3f}$, $\sigma={sigma:.3f}$')
-plt.xlabel("Samples [100ps]")
-plt.ylabel("Counts")
 print(np.std(TOAs))
 plt.legend()
 plt.show()

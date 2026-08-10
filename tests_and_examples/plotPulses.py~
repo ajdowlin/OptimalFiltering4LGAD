@@ -1,0 +1,92 @@
+data_path = "/Volumes/T9/ch01_relativeMeasurement.csv"
+#data_path = "/Volumes/T9/LGAD_10kEvents_ch012ref_ch34567sig.csv"
+ped_path = "/Volumes/T9/fullDynamicPedestals_6_17_26.csv"
+ch_sig = 1
+ch_ref = 0
+maxEvents = 3000
+TOA_min = 0
+TOA_max = 100
+events = range(100)
+
+slopes = pedestals.getPedestalSlopes(ped_path,plots=True,avgSlope = True)
+
+#tCalib_even_sig = "/Volumes/T9/Ch2_98511Events_EvenWinCalib.csv" #"/Volumes/T9/Ch3_98602Events_EvenWinCalib.csv"
+#tCalib_odd_sig =  "/Volumes/T9/Ch2_100059Events_OddWinCalib.csv" #"/Volumes/T9/Ch3_99968Events_OddWinCalib.csv"
+
+tCalib_even_sig = "/Volumes/T9/ch0123_timeCalib_2Mevents_7_31_26_capture_2/Ch1_-400Thresh_EvenWinCalib.csv"
+tCalib_odd_sig = "/Volumes/T9/ch0123_timeCalib_2Mevents_7_31_26_capture_2/Ch1_-400Thresh_OddWinCalib.csv"
+
+tCalib_even_ref = "/Volumes/T9/ch0123_timeCalib_2Mevents_7_31_26_capture_1/Ch0_-400Thresh_EvenWinCalib.csv"
+tCalib_odd_ref =  "/Volumes/T9/ch0123_timeCalib_2Mevents_7_31_26_capture_1/Ch0_-400Thresh_OddWinCalib.csv"
+
+
+
+df_even_ref = pd.read_csv(tCalib_even_ref)
+tCalib_ref_even = df_even_ref["bin_width_ps"].to_numpy(dtype=float)
+
+df_odd_ref = pd.read_csv(tCalib_odd_ref)
+tCalib_ref_odd = df_odd_ref["bin_width_ps"].to_numpy(dtype=float)
+
+df_even_sig = pd.read_csv(tCalib_even_sig)
+tCalib_sig_even = df_even_sig["bin_width_ps"].to_numpy(dtype=float)
+
+df_odd_sig = pd.read_csv(tCalib_odd_sig)
+tCalib_sig_odd = df_odd_sig["bin_width_ps"].to_numpy(dtype=float)
+
+
+plt.figure(figsize=(8,6))
+
+df = pd.read_csv(data_path)
+
+for event_num in events:
+    event_df = df[df["event"] == event_num]
+    try:
+        start_window = df[df["event"] == event_num]["start_window"].iloc[0]
+    except Exception as e:
+        print(f"Error occurred: {e} at waveform ", event_num) 
+        print("can't find start window evnt: ", event_num)
+        continue
+
+    if event_num%100==0:
+            print("Processing Event Number: ", event_num)
+    try:
+        raw_waveform_sig = event_df[f"ch{ch_sig}"].to_numpy()
+        waveform_sig, times_sig, flags_sig, bad_sig = calib_waveform.process_waveform(raw_waveform_sig,
+                                                                                      slopes,
+                                                                                      start_window,
+                                                                                      ch_sig,
+                                                                                      baseline = [0,50],
+                                                                                      badSample_range = [-1000, 2000],
+                                                                                      waveform_bounds = [30, 5],
+                                                                                      tCalib = [tCalib_sig_even,tCalib_sig_odd],
+                                                                                      invert = False,
+                                                                                      flagMax = 0,
+                                                                                      ievnt = event_num,
+                                                                                      sampleOff = 2300,
+                                                                                      v=False
+                                                                                      )
+        raw_waveform_ref = event_df[f"ch{ch_ref}"].to_numpy()
+        waveform_ref, times_ref, flags_ref, bad_ref = calib_waveform.process_waveform(raw_waveform_ref,
+                                                                                      slopes,
+                                                                                      start_window,
+                                                                                      ch_ref,
+                                                                                      baseline = [0,50],
+                                                                                      badSample_range = [-600, 4000],
+                                                                                      waveform_bounds = [30, 5],
+                                                                                      tCalib = None,#[tCalib_ref_even,tCalib_ref_odd],
+                                                                                      invert = False,
+                                                                                      flagMax = 0,
+                                                                                      ievnt = event_num,
+                                                                                      sampleOff= 2300,
+                                                                                      v=False
+                                                                                      )
+
+
+        plt.plot(times_ref, waveform_ref, label = 'ref')
+        plt.plot(times_sig, waveform_sig, label = 'sig')
+        plt.xlabel("Samples (100ps)")
+        plt.ylabel("mV")
+
+
+#plt.legend()  
+plt.show()
